@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BubbleMe 🫧</title>
+<style>
+  :root{
+    --ink:#23235c;
+    --paper:#fdf8ee;
+    --coral:#f4827d;
+    --sky:#cfe6f7;
+    --good:#7ec97e; --warn:#f3a83b; --bad:#ef7d7d;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%; margin:0; overflow:hidden;}
+  body{
+    font-family:"Comic Sans MS","Chalkboard SE","Marker Felt",cursive,sans-serif;
+    background:var(--paper); color:var(--ink);
+    user-select:none; touch-action:manipulation;
+  }
+  button{font-family:inherit; color:var(--ink);}
+  .screen{position:absolute; inset:0; display:none; flex-direction:column;}
+  .screen.on{display:flex;}
+
+  /* ============ TITLE SCREEN ============ */
+  #scrTitle{align-items:center; justify-content:center; gap:22px;
+    background:linear-gradient(#e8f3fb,#fdf8ee 60%);}
+  #logo{font-size:54px; font-weight:bold; letter-spacing:1px;
+    text-shadow:3px 3px 0 #fff, 5px 5px 0 rgba(35,35,92,.18);
+    transform:rotate(-3deg); animation:logoBob 2.4s ease-in-out infinite;}
+  @keyframes logoBob{50%{transform:rotate(-3deg) translateY(-8px)}}
+  #logoSub{font-size:15px; opacity:.6; margin-top:-14px; transform:rotate(-3deg);}
+  .bigBtn{font-size:22px; background:#fff; border:4px solid var(--ink); border-radius:24px;
+    padding:14px 38px; box-shadow:0 6px 0 rgba(35,35,92,.3); transition:transform .08s;}
+  .bigBtn:active{transform:translateY(4px); box-shadow:0 2px 0 rgba(35,35,92,.3);}
+  .bgBubble{position:absolute; border:3px solid rgba(35,35,92,.35); border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(207,230,247,.4));
+    animation:bubbleUp linear infinite; pointer-events:none;}
+  .bgBubble:after{content:""; position:absolute; top:18%; left:20%; width:25%; height:18%;
+    background:#fff; border-radius:50%; opacity:.9;}
+  @keyframes bubbleUp{from{transform:translateY(110vh)}to{transform:translateY(-20vh)}}
+
+  /* ============ CREATOR SCREEN ============ */
+  #scrCreate{background:linear-gradient(#fdf3e0,#fdf8ee 50%); overflow-y:auto;}
+  #scrCreate h2{text-align:center; margin:14px 0 4px; font-size:24px;}
+  #createWrap{display:flex; flex-direction:column; align-items:center; gap:8px; padding:0 16px 24px;}
+  #previewBox{width:170px;}
+  .optRow{width:100%; max-width:420px;}
+  .optRow .optLbl{font-size:14px; margin:6px 0 4px; font-weight:bold;}
+  .chips{display:flex; gap:8px; flex-wrap:wrap;}
+  .chip{border:3px solid var(--ink); border-radius:14px; background:#fff; padding:7px 12px;
+    font-size:14px; box-shadow:0 3px 0 rgba(35,35,92,.2);}
+  .chip.sel{background:#ffe9a8; box-shadow:inset 0 0 0 2px var(--ink), 0 3px 0 rgba(35,35,92,.2);}
+  .swatch{width:38px; height:38px; border-radius:50%; border:3px solid var(--ink);
+    box-shadow:0 3px 0 rgba(35,35,92,.2);}
+  .swatch.sel{outline:4px solid #ffd34d;}
+  .nameInput{width:100%; max-width:420px; font-family:inherit; font-size:17px; color:var(--ink);
+    border:3px solid var(--ink); border-radius:14px; padding:9px 12px; background:#fff;}
+
+  /* ============ GAME SCREEN ============ */
+  #scrGame{background:
+    radial-gradient(circle at 18% 12%, #fff3cf 0 16%, transparent 17%),
+    var(--paper);}
+  #hud{display:flex; align-items:center; gap:8px; padding:8px 12px 2px; flex-wrap:wrap;}
+  .hudCard{background:#fff; border:3px solid var(--ink); border-radius:16px; padding:3px 10px;
+    font-size:14px; font-weight:bold; box-shadow:2px 2px 0 rgba(35,35,92,.15);
+    display:flex; align-items:center; gap:6px;}
+  #bubbleScore{margin-left:auto;}
+  #bubbleScore .bubIcon{display:inline-block; width:20px; height:20px; border-radius:50%;
+    border:2.5px solid var(--ink);
+    background:radial-gradient(circle at 30% 30%, #fff, #cfe6f7); position:relative;}
+  #friendBar{width:64px; height:9px; border:2px solid var(--ink); border-radius:8px;
+    overflow:hidden; background:#f3efe2;}
+  #friendBar i{display:block; height:100%; background:var(--coral); transition:width .4s;}
+  #stats{display:flex; gap:6px; padding:5px 12px 0;}
+  .stat{flex:1; background:#fff; border:2.5px solid var(--ink); border-radius:12px; padding:2px 7px;}
+  .stat .lbl{font-size:10.5px; display:flex; justify-content:space-between;}
+  .bar{height:7px; border:2px solid var(--ink); border-radius:6px; margin-top:2px; overflow:hidden; background:#f3efe2;}
+  .bar i{display:block; height:100%; transition:width .5s, background .5s;}
+
+  #stage{flex:1; position:relative; overflow:hidden;}
+  #clouds{position:absolute; top:6%; left:0; width:200%; display:flex; gap:18vw; opacity:.9;}
+  .cloud{width:90px; height:34px; background:#fff; border:3px solid var(--ink); border-radius:30px; position:relative;}
+  .cloud:before{content:""; position:absolute; left:18px; top:-16px; width:36px; height:30px;
+    background:#fff; border:3px solid var(--ink); border-radius:50%; border-bottom:none;}
+  #stage.running #clouds{animation:cloudsMove 1.1s linear infinite;}
+  @keyframes cloudsMove{to{transform:translateX(-50vw)}}
+  #ground{position:absolute; bottom:-4px; left:-5%; width:110%; height:64px;}
+  #speedLines{position:absolute; inset:0; opacity:0; pointer-events:none;}
+  #stage.running #speedLines{opacity:1;}
+  #speedLines i{position:absolute; height:4px; width:60px; background:var(--ink); border-radius:4px;
+    opacity:.25; animation:speed .5s linear infinite;}
+  @keyframes speed{from{transform:translateX(100vw)}to{transform:translateX(-150px)}}
+
+  #bubble{position:absolute; left:50%; top:4%;
+    transform:translateX(-50%) scale(0);
+    background:#fff; border:3px solid var(--ink); border-radius:18px;
+    padding:8px 14px; font-size:16px; max-width:84%;
+    text-align:center; transition:transform .22s cubic-bezier(.34,1.56,.64,1);
+    box-shadow:3px 3px 0 rgba(35,35,92,.15); z-index:9;}
+  #bubble:after{content:""; position:absolute; left:62%; bottom:-12px;
+    border:8px solid transparent; border-top:12px solid var(--ink);}
+  #bubble.show{transform:translateX(-50%) scale(1);}
+  #bubbleP{position:absolute; left:24%; top:13%;
+    transform:translateX(-50%) scale(0);
+    background:#fff; border:3px solid var(--ink); border-radius:18px;
+    padding:6px 12px; font-size:14px; max-width:50%;
+    text-align:center; transition:transform .22s cubic-bezier(.34,1.56,.64,1);
+    box-shadow:3px 3px 0 rgba(35,35,92,.15); z-index:9;}
+  #bubbleP:after{content:""; position:absolute; left:40%; bottom:-11px;
+    border:7px solid transparent; border-top:11px solid var(--ink);}
+  #bubbleP.show{transform:translateX(-50%) scale(1);}
+
+  /* characters */
+  .charBox{position:absolute; bottom:7%; width:min(44vw,190px); transition:transform .5s ease, left .5s ease;}
+  #buddyBox{left:52%;}
+  #playerBox{left:6%;}
+  .charBox svg{width:100%; display:block; overflow:visible;}
+  .charBox.idleB .bodyG{animation:breathe 3s ease-in-out infinite;}
+  @keyframes breathe{50%{transform:translateY(3px)}}
+
+  .charBox.giggle{animation:giggle .35s ease-in-out 3;}
+  @keyframes giggle{30%{transform:rotate(3.5deg)}70%{transform:rotate(-3.5deg)}}
+  .charBox.dance{animation:dance .55s ease-in-out infinite;}
+  @keyframes dance{0%,100%{transform:rotate(-6deg)}25%{transform:translateY(-14px)}50%{transform:rotate(6deg)}75%{transform:translateY(-14px)}}
+  .charBox.jumpy{animation:jumpy .6s ease-in-out infinite;}
+  @keyframes jumpy{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
+  .charBox.sadShake{animation:sadShake .5s ease-in-out infinite;}
+  @keyframes sadShake{50%{transform:translateY(2px)}}
+  .charBox.leanR{animation:leanR .5s ease-in-out infinite;}
+  .charBox.leanL{animation:leanL .5s ease-in-out infinite;}
+  @keyframes leanR{0%,100%{transform:rotate(0)}50%{transform:rotate(12deg) translateX(14px)}}
+  @keyframes leanL{0%,100%{transform:rotate(0)}50%{transform:rotate(-12deg) translateX(-14px)}}
+
+  /* running pose */
+  .charBox.run .legLG{animation:swingA .28s linear infinite; transform-origin:134px 346px;}
+  .charBox.run .legRG{animation:swingB .28s linear infinite; transform-origin:166px 346px;}
+  .charBox.run .armLG{animation:swingB .28s linear infinite; transform-origin:108px 234px;}
+  .charBox.run .armRG{animation:swingA .28s linear infinite; transform-origin:192px 234px;}
+  .charBox.run .bodyG{animation:runBob .28s linear infinite;}
+  @keyframes swingA{0%,100%{transform:rotate(30deg)}50%{transform:rotate(-30deg)}}
+  @keyframes swingB{0%,100%{transform:rotate(-30deg)}50%{transform:rotate(30deg)}}
+  @keyframes runBob{50%{transform:translateY(-6px)}}
+
+  /* hair blowing */
+  .charBox.blowing .lockL{animation:blowL .35s ease-in-out infinite; transform-origin:107px 92px;}
+  .charBox.blowing .lockR{animation:blowR .35s ease-in-out infinite; transform-origin:193px 92px;}
+  .charBox.blowing .fringe{animation:blowF .35s ease-in-out infinite; transform-origin:150px 78px;}
+  @keyframes blowL{0%,100%{transform:skewX(10deg) rotate(6deg)}50%{transform:skewX(16deg) rotate(9deg)}}
+  @keyframes blowR{0%,100%{transform:skewX(10deg) rotate(2deg)}50%{transform:skewX(18deg) rotate(5deg)}}
+  @keyframes blowF{0%,100%{transform:skewX(6deg)}50%{transform:skewX(10deg)}}
+
+  /* arms */
+  .armLG,.armRG{transition:transform .3s;}
+  .charBox.armsUp .armLG{transform:rotate(150deg); transform-origin:108px 234px;}
+  .charBox.armsUp .armRG{transform:rotate(-150deg); transform-origin:192px 234px;}
+  .charBox.pillowUp .armRG{transform:rotate(-160deg); transform-origin:192px 234px;}
+  .charBox .pillow{display:none;}
+  .charBox.pillowUp .pillow{display:block;}
+
+  /* expressions */
+  .ex{visibility:hidden;}
+  .charBox[data-expr="calm"] .ex-calm,
+  .charBox[data-expr="happy"] .ex-happy,
+  .charBox[data-expr="laugh"] .ex-laugh,
+  .charBox[data-expr="open"] .ex-open,
+  .charBox[data-expr="sleepy"] .ex-sleepy,
+  .charBox[data-expr="cry"] .ex-cry,
+  .charBox[data-expr="love"] .ex-love,
+  .charBox[data-expr="hot"] .ex-hot,
+  .charBox[data-expr="o"] .ex-o,
+  .charBox[data-expr="grr"] .ex-grr,
+  .charBox[data-expr="eat"] .ex-eat{visibility:visible;}
+  .charBox[data-expr="happy"] .blush,
+  .charBox[data-expr="laugh"] .blush,
+  .charBox[data-expr="love"] .blush{visibility:visible;}
+  .charBox.chomp .ex-eat .mOpen{visibility:hidden;}
+  .charBox.chomp .ex-eat .mShut{visibility:visible;}
+  .charBox:not(.chomp) .ex-eat .mShut{visibility:hidden;}
+  .tear{animation:tearFall 1s linear infinite; opacity:0;}
+  .charBox[data-expr="cry"] .tear{opacity:1;}
+  @keyframes tearFall{0%{transform:translateY(0); opacity:1}100%{transform:translateY(34px); opacity:0}}
+
+  /* hairstyles */
+  .hairS{display:none;}
+  .charBox[data-hair="bob"] .hair-bob,
+  .charBox[data-hair="pony"] .hair-pony,
+  .charBox[data-hair="bun"] .hair-bun,
+  .charBox[data-hair="short"] .hair-short{display:block;}
+
+  /* fan */
+  #fan{position:absolute; left:-2%; bottom:12%; width:26%; max-width:120px;
+    transform:translateX(-140%); transition:transform .45s cubic-bezier(.34,1.4,.64,1); z-index:3;}
+  #fan.in{transform:translateX(0);}
+  #fan .blades{transform-origin:62px 62px;}
+  #fan.in .blades{animation:spin .25s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #fan .wind{stroke-dasharray:14 10; animation:windmove .5s linear infinite; opacity:0;}
+  #fan.in .wind{opacity:1;}
+  @keyframes windmove{to{stroke-dashoffset:-24}}
+
+  .fx{position:absolute; font-size:28px; pointer-events:none; animation:floatUp 1.4s ease-out forwards; z-index:8;}
+  @keyframes floatUp{0%{opacity:0; transform:translateY(8px) scale(.5)}20%{opacity:1}
+    100%{opacity:0; transform:translateY(-90px) scale(1.15) rotate(14deg)}}
+  .fxHeart{color:var(--coral);} .fxNote{color:var(--ink);} .fxZ{color:#7d9ec7; font-weight:bold;}
+  .feather{position:absolute; width:14px; height:20px; background:#fff; border:2.5px solid var(--ink);
+    border-radius:50% 50% 50% 50%/60% 60% 40% 40%; pointer-events:none; z-index:8;
+    animation:featherFall 1.6s ease-in forwards;}
+  @keyframes featherFall{0%{opacity:1; transform:translateY(0) rotate(0)}
+    100%{opacity:0; transform:translateY(120px) rotate(160deg)}}
+  .plusBub{position:absolute; font-size:16px; font-weight:bold; color:var(--ink);
+    background:#e7f3fc; border:2.5px solid var(--ink); border-radius:999px; padding:2px 10px;
+    pointer-events:none; animation:floatUp 1.2s ease-out forwards; z-index:11;}
+
+  #nightOverlay{position:absolute; inset:0; background:#1d2350; opacity:0;
+    pointer-events:none; transition:opacity .8s; z-index:7;}
+  #nightOverlay.on{opacity:.45;}
+  #flyFood{position:absolute; font-size:36px; z-index:10; pointer-events:none; display:none;}
+
+  /* talk bar */
+  #talkBar{display:none; gap:8px; padding:8px 12px; align-items:center;}
+  #talkBar.on{display:flex;}
+  #talkBar input{flex:1; font-family:inherit; font-size:16px; color:var(--ink);
+    border:3px solid var(--ink); border-radius:16px; padding:9px 12px; background:#fff; min-width:0;}
+  .roundBtn{width:48px; height:48px; border-radius:50%; border:3px solid var(--ink); background:#fff;
+    font-size:21px; box-shadow:0 3px 0 rgba(35,35,92,.25); flex:none;}
+  .roundBtn:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(35,35,92,.25);}
+  .roundBtn.rec{background:#ffe3e0; animation:pulse .8s infinite;}
+  @keyframes pulse{50%{transform:scale(1.08)}}
+
+  /* action bar */
+  #actions{display:flex; gap:9px; overflow-x:auto; padding:8px 12px calc(12px + env(safe-area-inset-bottom));
+    background:linear-gradient(#fdf8ee00,#f8efdc 30%); scrollbar-width:none;}
+  #actions::-webkit-scrollbar{display:none;}
+  .btn{flex:none; width:76px; border:3px solid var(--ink); border-radius:18px; background:#fff;
+    font-size:13px; padding:8px 2px 7px; box-shadow:0 4px 0 rgba(35,35,92,.25);
+    display:flex; flex-direction:column; align-items:center; gap:1px; transition:transform .08s;}
+  .btn span{font-size:23px; line-height:1.1;}
+  .btn:active{transform:translateY(3px); box-shadow:0 1px 0 rgba(35,35,92,.25);}
+  .btn.glow{background:#ffe9a8;}
+
+  /* level up + minigame overlays */
+  #overlayMsg{position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    z-index:20; pointer-events:none;}
+  #overlayMsg.on{display:flex;}
+  #overlayMsg .card{background:#fff; border:4px solid var(--ink); border-radius:24px; padding:20px 30px;
+    font-size:24px; font-weight:bold; text-align:center; box-shadow:0 6px 0 rgba(35,35,92,.3);
+    animation:popIn .4s cubic-bezier(.34,1.56,.64,1);}
+  @keyframes popIn{from{transform:scale(.3)}}
+
+  #miniGame{position:absolute; inset:0; background:linear-gradient(#dff0fc,#fdf8ee 70%);
+    display:none; z-index:25; overflow:hidden; touch-action:none;}
+  #miniGame.on{display:block;}
+  #mgHud{position:absolute; top:10px; left:0; right:0; display:flex; justify-content:center; gap:14px; z-index:2;}
+  #mgCatcher{position:absolute; bottom:4%; width:110px; transition:none; will-change:left;}
+  #mgCatcher svg{width:100%; overflow:visible;}
+  .cookie{position:absolute; font-size:34px; will-change:top;}
+  #mgMsg{position:absolute; inset:0; display:flex; flex-direction:column; gap:14px;
+    align-items:center; justify-content:center; z-index:3;}
+  @media (prefers-reduced-motion: reduce){*{animation:none !important; transition:none !important;}}
+</style>
+</head>
+<body>
+
+<!-- ================= TITLE ================= -->
+<div class="screen on" id="scrTitle">
+  <div id="logo">🫧 BubbleMe</div>
+  <div id="logoSub">your hand-drawn best friend</div>
+  <div id="titleChar" style="width:150px"></div>
+  <button class="bigBtn" id="btnStart">▶ Play</button>
+</div>
+
+<!-- ================= CREATOR ================= -->
+<div class="screen" id="scrCreate">
+  <h2>✏️ Make your character!</h2>
+  <div id="createWrap">
+    <div id="previewBox"></div>
+    <div class="optRow"><div class="optLbl">Your name</div>
+      <input class="nameInput" id="inpPlayerName" maxlength="12" placeholder="Your name..." value="Me"></div>
+    <div class="optRow"><div class="optLbl">Hair style</div>
+      <div class="chips" id="hairChips">
+        <button class="chip sel" data-v="bob">Wavy bob</button>
+        <button class="chip" data-v="pony">Ponytail</button>
+        <button class="chip" data-v="bun">Top bun</button>
+        <button class="chip" data-v="short">Short</button>
+      </div></div>
+    <div class="optRow"><div class="optLbl">Hair color</div>
+      <div class="chips" id="hairColors"></div></div>
+    <div class="optRow"><div class="optLbl">T-shirt color</div>
+      <div class="chips" id="teeColors"></div></div>
+    <div class="optRow"><div class="optLbl">Your buddy's name</div>
+      <input class="nameInput" id="inpBuddyName" maxlength="12" value="Mia"></div>
+    <button class="bigBtn" id="btnGo" style="margin-top:10px">Let's go! 🫧</button>
+  </div>
+</div>
+
+<!-- ================= GAME ================= -->
+<div class="screen" id="scrGame">
+  <div id="hud">
+    <div class="hudCard">🫧 BubbleMe</div>
+    <div class="hudCard">💗 Lv <span id="lvNum">1</span>
+      <span id="friendBar"><i></i></span></div>
+    <div class="hudCard" id="bubbleScore"><span class="bubIcon"></span><span id="bubNum">0</span></div>
+  </div>
+  <div id="stats">
+    <div class="stat"><div class="lbl"><span>🍪 Food</span><span id="vFood">80</span></div><div class="bar"><i id="bFood"></i></div></div>
+    <div class="stat"><div class="lbl"><span>💛 Happy</span><span id="vHappy">80</span></div><div class="bar"><i id="bHappy"></i></div></div>
+    <div class="stat"><div class="lbl"><span>⚡ Energy</span><span id="vEnergy">80</span></div><div class="bar"><i id="bEnergy"></i></div></div>
+  </div>
+
+  <div id="stage">
+    <div id="clouds"><div class="cloud"></div><div class="cloud" style="margin-top:24px"></div><div class="cloud"></div><div class="cloud" style="margin-top:16px"></div></div>
+    <div id="speedLines"><i style="top:25%; animation-delay:0s"></i><i style="top:45%; animation-delay:.2s"></i><i style="top:65%; animation-delay:.1s"></i></div>
+    <svg id="ground" viewBox="0 0 400 64" preserveAspectRatio="none">
+      <path d="M0 36 Q60 20 130 34 Q210 48 290 32 Q350 22 400 36 L400 64 L0 64 Z"
+        fill="#f3ead2" stroke="#23235c" stroke-width="4"/>
+    </svg>
+    <div id="nightOverlay"></div>
+    <div id="bubble"></div>
+    <div id="bubbleP"></div>
+
+    <svg id="fan" viewBox="0 0 200 220">
+      <g stroke="#23235c" stroke-width="6" stroke-linecap="round" fill="#fff">
+        <path d="M58 118 L58 190" fill="none"/>
+        <path d="M34 190 Q58 178 84 190 L80 206 L38 206 Z"/>
+        <ellipse cx="62" cy="62" rx="44" ry="50"/>
+        <g class="blades" stroke-width="3.5">
+          <path d="M62 62 L62 22 M62 62 L96 48 M62 62 L92 86 M62 62 L40 96 M62 62 L28 70 M62 62 L36 34" fill="none"/>
+        </g>
+        <circle cx="62" cy="62" r="9" fill="#cfe6f7"/>
+      </g>
+      <g class="wind" stroke="#23235c" stroke-width="4" fill="none" stroke-linecap="round">
+        <path d="M118 44 Q140 38 162 46"/><path d="M120 70 Q150 64 178 72"/><path d="M118 96 Q142 92 164 98"/>
+      </g>
+    </svg>
+
+    <div class="charBox idleB" id="playerBox" data-expr="calm" data-hair="bob"></div>
+    <div class="charBox idleB" id="buddyBox" data-expr="calm" data-hair="bob"></div>
+    <div id="flyFood">🍎</div>
+  </div>
+
+  <div id="talkBar">
+    <button class="roundBtn" id="btnMic">🎤</button>
+    <input id="talkInput" placeholder="Say something to her..." autocomplete="off">
+    <button class="roundBtn" id="btnSend">➤</button>
+    <button class="roundBtn" id="btnCloseTalk">✕</button>
+  </div>
+
+  <div id="actions">
+    <button class="btn glow" id="aTalk"><span>💬</span>Talk</button>
+    <button class="btn" id="aFeed"><span>🍪</span>Feed</button>
+    <button class="btn" id="aHug"><span>🤗</span>Hug</button>
+    <button class="btn" id="aDance"><span>🎵</span>Dance</button>
+    <button class="btn" id="aRun"><span>🏃</span>Run</button>
+    <button class="btn" id="aFight"><span>🪶</span>Pillow fight</button>
+    <button class="btn" id="aCatch"><span>🎮</span>Catch!</button>
+    <button class="btn" id="aFan"><span>🌬️</span>Fan</button>
+    <button class="btn" id="aSleep"><span>😴</span>Sleep</button>
+  </div>
+
+  <div id="overlayMsg"><div class="card" id="overlayCard"></div></div>
+
+  <div id="miniGame">
+    <div id="mgHud">
+      <div class="hudCard">🍪 <span id="mgScore">0</span></div>
+      <div class="hudCard">⏱ <span id="mgTime">20</span></div>
+    </div>
+    <div id="mgCatcher"></div>
+    <div id="mgMsg"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================
+   BubbleMe — a hand-drawn buddy game
+   ========================================================= */
+const $ = id => document.getElementById(id);
+const rand = a => a[Math.floor(Math.random()*a.length)];
+const clamp = v => Math.max(0, Math.min(100, v));
+
+/* ---------------- character template (drawn to match the illustrations) ---------------- */
+function charSVG(cfg){
+  const hair = cfg.hair, tee = cfg.tee;
+  return `
+  <svg viewBox="0 0 300 430">
+    <g class="bodyG">
+      <!-- ARMS (thin doodle arms with little fingers) -->
+      <g class="armLG"><path d="M110 234 C97 250 92 270 96 292 M96 292 L89 289 M96 292 L94 299 M96 292 L101 297"
+        stroke="#23235c" stroke-width="5.5" fill="none" stroke-linecap="round"/></g>
+      <g class="armRG">
+        <g class="pillow">
+          <rect x="186" y="142" width="64" height="44" rx="16" fill="#fff" stroke="#23235c" stroke-width="5"/>
+          <path d="M192 146 L186 138 M244 146 L252 138 M192 182 L186 190 M244 182 L252 190"
+            stroke="#23235c" stroke-width="4" stroke-linecap="round"/>
+        </g>
+        <path d="M190 234 C203 250 208 270 204 292 M204 292 L211 289 M204 292 L206 299 M204 292 L199 297"
+        stroke="#23235c" stroke-width="5.5" fill="none" stroke-linecap="round"/></g>
+
+      <!-- hair back volume -->
+      <ellipse cx="150" cy="64" rx="57" ry="40" fill="${hair}" stroke="#23235c" stroke-width="6"/>
+      <g class="hairS hair-pony">
+        <path d="M168 26 C196 22 216 42 212 76 C222 50 212 18 172 16 Z"
+          fill="${hair}" stroke="#23235c" stroke-width="5" stroke-linejoin="round"/>
+        <path d="M150 28 C144 12 162 4 168 16 C178 4 192 14 184 28 Z"
+          fill="${hair}" stroke="#23235c" stroke-width="5" stroke-linejoin="round"/>
+      </g>
+      <g class="hairS hair-bun">
+        <circle cx="118" cy="22" r="17" fill="${hair}" stroke="#23235c" stroke-width="5"/>
+        <path d="M118 22 C110 16 118 8 124 14 C128 8 136 14 130 22" fill="none" stroke="#23235c" stroke-width="3.5" stroke-linecap="round"/>
+      </g>
+
+      <!-- face -->
+      <path d="M150 50 C116 50 102 76 102 114 C102 154 110 190 150 196 C190 190 198 154 198 114 C198 76 184 50 150 50 Z"
+        fill="#fffdfa" stroke="#23235c" stroke-width="6"/>
+
+      <!-- fringe (side-swept like the drawings) -->
+      <path class="fringe" d="M102 102 C104 58 126 42 150 42 C174 42 196 58 198 102 C188 78 172 72 154 74 C132 76 116 84 102 102 Z"
+        fill="${hair}" stroke="#23235c" stroke-width="6" stroke-linejoin="round"/>
+
+      <!-- side locks with the wavy flip (bob & pony & bun show different lengths) -->
+      <g class="hairS hair-bob">
+        <path class="lockL" d="M107 82 C90 94 85 124 89 152 C91 170 77 180 85 198 C94 216 118 211 119 190 C120 170 111 154 112 130 C112 112 111 92 107 82 Z"
+          fill="${hair}" stroke="#23235c" stroke-width="6" stroke-linejoin="round"/>
+        <path class="lockR" d="M193 82 C210 94 215 124 211 152 C209 170 223 180 215 198 C206 216 182 211 181 190 C180 170 189 154 188 130 C188 112 189 92 193 82 Z"
+          fill="${hair}" stroke="#23235c" stroke-width="6" stroke-linejoin="round"/>
+      </g>
+      <g class="hairS hair-pony">
+        <path class="lockL" d="M106 84 C96 92 94 110 96 128 C97 142 92 150 98 160 C106 170 118 164 118 150 C118 134 112 120 112 104 C112 96 110 88 106 84 Z"
+          fill="${hair}" stroke="#23235c" stroke-width="5.5" stroke-linejoin="round"/>
+        <path class="lockR" d="M194 84 C204 92 206 110 204 128 C203 142 208 150 202 160 C194 170 182 164 182 150 C182 134 188 120 188 104 C188 96 190 88 194 84 Z"
+          fill="${hair}" stroke="#23235c" stroke-width="5.5" stroke-linejoin="round"/>
+      </g>
+      <g class="hairS hair-bun">
+        <path class="lockL" d="M106 84 C98 92 96 106 98 120 C99 130 106 134 110 126 C114 116 110 100 106 84 Z"
+          fill="${hair}" stroke="#23235c" stroke-width="5" stroke-linejoin="round"/>
+        <path class="lockR" d="M194 84 C202 92 204 106 202 120 C201 130 194 134 190 126 C186 116 190 100 194 84 Z"
+          fill="${hair}" stroke="#23235c" stroke-width="5" stroke-linejoin="round"/>
+      </g>
+      <g class="hairS hair-short">
+        <path class="lockL" d="M105 84 C100 92 99 102 101 112 C103 120 110 120 111 110 C112 100 109 90 105 84 Z"
+          fill="${hair}" stroke="#23235c" stroke-width="5" stroke-linejoin="round"/>
+        <path class="lockR" d="M195 84 C200 92 201 102 199 112 C197 120 190 120 189 110 C188 100 191 90 195 84 Z"
+          fill="${hair}" stroke="#23235c" stroke-width="5" stroke-linejoin="round"/>
+        <path d="M142 40 C144 30 152 28 156 36" fill="none" stroke="#23235c" stroke-width="4" stroke-linecap="round"/>
+      </g>
+
+      <!-- little nose like image 1 -->
+      <path d="M149 140 Q154 146 149 151" fill="none" stroke="#23235c" stroke-width="4.5" stroke-linecap="round"/>
+
+      <!-- neck -->
+      <path d="M143 196 L141 210 M157 196 L159 210" stroke="#23235c" stroke-width="6" stroke-linecap="round"/>
+
+      <!-- t-shirt -->
+      <path d="M150 206 C129 206 117 211 109 218 C98 227 94 244 94 262 L94 290 C94 296 100 300 108 300 L192 300 C200 300 206 296 206 290 L206 262 C206 244 202 227 191 218 C183 211 171 206 150 206 Z"
+        fill="${tee}" stroke="#23235c" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M136 208 L150 224 L164 208" fill="none" stroke="#23235c" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M112 224 L106 238 M188 224 L194 238" fill="none" stroke="#23235c" stroke-width="4" stroke-linecap="round" opacity=".6"/>
+
+      <!-- shorts -->
+      <path d="M110 300 L190 300 L196 336 C197 343 191 346 184 346 L162 346 C158 346 156 343 155 338 L150 322 L145 338 C144 343 142 346 138 346 L116 346 C109 346 103 343 104 336 Z"
+        fill="#fffdfa" stroke="#23235c" stroke-width="6" stroke-linejoin="round"/>
+
+      <!-- legs -->
+      <g class="legLG"><path d="M133 346 L130 402 M130 402 Q125 409 116 406" stroke="#23235c" stroke-width="5.5" fill="none" stroke-linecap="round"/></g>
+      <g class="legRG"><path d="M167 346 L170 402 M170 402 Q175 409 184 406" stroke="#23235c" stroke-width="5.5" fill="none" stroke-linecap="round"/></g>
+
+      <!-- ===== expressions ===== -->
+      <g class="blush ex" fill="#f9c1bb" opacity=".8">
+        <ellipse cx="121" cy="154" rx="9" ry="5"/><ellipse cx="179" cy="154" rx="9" ry="5"/>
+      </g>
+      <g class="ex ex-calm" stroke="#23235c" stroke-width="5" fill="none" stroke-linecap="round">
+        <path d="M117 126 Q128 136 139 126"/><path d="M161 126 Q172 136 183 126"/>
+        <path d="M139 164 Q148 172 157 164"/>
+      </g>
+      <g class="ex ex-happy" stroke="#23235c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M117 130 Q128 118 139 130" fill="none"/><path d="M161 130 Q172 118 183 130" fill="none"/>
+        <path d="M132 158 C138 182 162 182 168 158 Q150 165 132 158 Z" fill="#fff"/>
+      </g>
+      <g class="ex ex-laugh" stroke="#23235c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M117 124 L128 130 L117 136 M139 124 L128 130" fill="none"/>
+        <path d="M183 124 L172 130 L183 136 M161 124 L172 130" fill="none"/>
+        <path d="M130 156 C136 186 164 186 170 156 Q150 164 130 156 Z" fill="#fff"/>
+      </g>
+      <g class="ex ex-open">
+        <ellipse cx="130" cy="126" rx="5.5" ry="7.5" fill="#23235c"/>
+        <ellipse cx="170" cy="126" rx="5.5" ry="7.5" fill="#23235c"/>
+        <path d="M142 166 Q150 162 158 166" stroke="#23235c" stroke-width="5" fill="none" stroke-linecap="round"/>
+      </g>
+      <g class="ex ex-sleepy" stroke="#23235c" stroke-width="5" fill="none" stroke-linecap="round">
+        <path d="M118 128 L138 128"/><path d="M162 128 L182 128"/>
+        <ellipse cx="150" cy="168" rx="6" ry="7" fill="#fff" stroke-width="4.5"/>
+      </g>
+      <g class="ex ex-cry">
+        <path d="M115 114 L136 108 M185 114 L164 108" stroke="#23235c" stroke-width="5" stroke-linecap="round"/>
+        <path d="M119 128 Q128 122 137 128 M163 128 Q172 122 181 128" stroke="#23235c" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M133 170 Q150 158 167 170 Q165 187 150 187 Q135 187 133 170 Z" fill="#fff" stroke="#23235c" stroke-width="5" stroke-linejoin="round"/>
+        <path class="tear" d="M127 134 C123 142 123 146 127 148 C131 146 131 142 127 134 Z" fill="#bcdcf5" stroke="#23235c" stroke-width="2.5"/>
+        <path class="tear" style="animation-delay:.4s" d="M173 134 C169 142 169 146 173 148 C177 146 177 142 173 134 Z" fill="#bcdcf5" stroke="#23235c" stroke-width="2.5"/>
+      </g>
+      <g class="ex ex-love">
+        <path d="M119 122 C119 116 127 113 130 118 C133 113 141 116 141 122 C141 130 130 136 130 136 C130 136 119 130 119 122 Z" fill="#f4827d" stroke="#23235c" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M159 122 C159 116 167 113 170 118 C173 113 181 116 181 122 C181 130 170 136 170 136 C170 136 159 130 159 122 Z" fill="#f4827d" stroke="#23235c" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M139 162 Q149 172 159 162" stroke="#23235c" stroke-width="5" fill="none" stroke-linecap="round"/>
+      </g>
+      <g class="ex ex-hot">
+        <path d="M117 126 Q128 134 139 126 M161 126 Q172 134 183 126" stroke="#23235c" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M131 158 C137 178 163 178 169 158 Q150 164 131 158 Z" fill="#fff" stroke="#23235c" stroke-width="5" stroke-linejoin="round"/>
+        <path d="M197 102 C192 111 192 116 197 118 C202 116 202 111 197 102 Z" fill="#bcdcf5" stroke="#23235c" stroke-width="3"/>
+      </g>
+      <g class="ex ex-o">
+        <ellipse cx="130" cy="124" rx="6" ry="8" fill="#23235c"/>
+        <ellipse cx="170" cy="124" rx="6" ry="8" fill="#23235c"/>
+        <ellipse cx="150" cy="168" rx="7" ry="9" fill="#fff" stroke="#23235c" stroke-width="5"/>
+        <path d="M210 94 L222 86 M214 104 L228 100 M206 86 L216 74" stroke="#23235c" stroke-width="4" stroke-linecap="round"/>
+      </g>
+      <g class="ex ex-grr">
+        <path d="M116 112 L137 120 M184 112 L163 120" stroke="#23235c" stroke-width="5" stroke-linecap="round"/>
+        <ellipse cx="130" cy="128" rx="5.5" ry="7" fill="#23235c"/>
+        <ellipse cx="170" cy="128" rx="5.5" ry="7" fill="#23235c"/>
+        <path d="M133 160 C140 176 160 176 167 160 Q150 168 133 160 Z" fill="#fff" stroke="#23235c" stroke-width="5" stroke-linejoin="round"/>
+      </g>
+      <g class="ex ex-eat">
+        <path d="M117 126 Q128 136 139 126 M161 126 Q172 136 183 126" stroke="#23235c" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <g class="mOpen"><ellipse cx="150" cy="168" rx="12" ry="11" fill="#fff" stroke="#23235c" stroke-width="5"/></g>
+        <g class="mShut"><path d="M140 167 Q150 175 160 167" stroke="#23235c" stroke-width="5" fill="none" stroke-linecap="round"/></g>
+      </g>
+    </g>
+    <rect class="zoneHead" x="90" y="36" width="120" height="164" fill="transparent"/>
+    <rect class="zoneBelly" x="92" y="206" width="116" height="104" fill="transparent"/>
+  </svg>`;
+}
+
+/* ---------------- config ---------------- */
+const HAIR_COLORS = ["#9a5f3d","#6b4226","#2e2e44","#c97b4a","#e0a44b"];
+const TEE_COLORS  = ["#f6b81f","#cdb4e4","#8fc98a","#f4827d","#7fb6e0"];
+const buddyCfg  = {hair:"#9a5f3d", tee:"#f6b81f", hairStyle:"bob", name:"Mia"};
+const playerCfg = {hair:"#6b4226", tee:"#cdb4e4", hairStyle:"bob", name:"Me"};
+
+const S = {food:80, happy:80, energy:80};
+const G = {bubbles:0, xp:0, level:1};
+let busy = false, sleeping = false, fanOn = false, talkOpen = false;
+const chatHistory = [];
+
+/* ---------------- audio ---------------- */
+let AC = null;
+function audio(){ if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)();
+  if(AC.state==="suspended") AC.resume(); return AC; }
+function tone(freq,dur=0.12,type="sine",vol=0.18,slideTo=null,when=0){
+  try{
+    const ac=audio(),o=ac.createOscillator(),g=ac.createGain();
+    o.type=type; o.frequency.setValueAtTime(freq,ac.currentTime+when);
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo,ac.currentTime+when+dur);
+    g.gain.setValueAtTime(vol,ac.currentTime+when);
+    g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+when+dur);
+    o.connect(g).connect(ac.destination);
+    o.start(ac.currentTime+when); o.stop(ac.currentTime+when+dur+0.02);
+  }catch(e){}
+}
+const snd = {
+  pop(){tone(500,0.08,"sine",0.2,900);},
+  blip(){tone(880,0.07,"square",0.08,1200);},
+  boing(){tone(180,0.2,"sine",0.22,420);},
+  giggle(){[0,1,2].forEach(i=>tone(620+i*140,0.09,"sine",0.16,null,i*0.09));},
+  chomp(){tone(220,0.07,"square",0.12,140);},
+  sad(){tone(420,0.4,"sine",0.15,200);},
+  notes(){[523,659,784,659].forEach((f,i)=>tone(f,0.14,"triangle",0.14,null,i*0.16));},
+  snore(){tone(110,0.5,"sine",0.12,90);},
+  whoosh(){tone(900,0.35,"sawtooth",0.04,300);},
+  love(){tone(660,0.15,"sine",0.16,880); tone(880,0.2,"sine",0.14,1100,0.12);},
+  bonk(){tone(150,0.1,"square",0.2,90);},
+  fanfare(){[523,659,784,1047].forEach((f,i)=>tone(f,0.18,"triangle",0.18,null,i*0.13));},
+  steps(){tone(200,0.05,"square",0.07,150);}
+};
+
+/* ---------------- speech ---------------- */
+let voiceObj = null;
+function pickVoice(){
+  const vs = speechSynthesis.getVoices();
+  voiceObj = vs.find(v=>/en[-_](IN|GB|US)/i.test(v.lang)&&/female|woman|girl|zira|samantha|veena|heera|google uk english female/i.test(v.name))
+    || vs.find(v=>/^en/i.test(v.lang)) || vs[0] || null;
+}
+if("speechSynthesis" in window){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+let mouthTimer = null;
+function say(text, opts={}){
+  showBubble(text, opts.who==="player");
+  if(!("speechSynthesis" in window)) return;
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    if(voiceObj) u.voice = voiceObj;
+    u.pitch = opts.pitch ?? 1.9; u.rate = opts.rate ?? 1.22; u.volume = 1;
+    if(opts.who !== "player"){
+      // animate buddy mouth while speaking
+      clearInterval(mouthTimer);
+      const prevExpr = buddyBox.dataset.expr;
+      buddyBox.dataset.expr = "eat";
+      mouthTimer = setInterval(()=>buddyBox.classList.toggle("chomp"), 130);
+      const stop = ()=>{ clearInterval(mouthTimer); buddyBox.classList.remove("chomp");
+        if(buddyBox.dataset.expr==="eat") buddyBox.dataset.expr = opts.after || prevExpr || "calm"; };
+      u.onend = stop; u.onerror = stop;
+      setTimeout(stop, 9000); // safety
+    }
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+/* ---------------- UI helpers ---------------- */
+const buddyBox = $("buddyBox"), playerBox = $("playerBox"), stage = $("stage");
+let bubbleTimer, bubbleTimerP;
+function showBubble(text, isPlayer){
+  const b = isPlayer ? $("bubbleP") : $("bubble");
+  b.textContent = text; b.classList.add("show");
+  if(isPlayer){ clearTimeout(bubbleTimerP); bubbleTimerP=setTimeout(()=>b.classList.remove("show"),2400); }
+  else { clearTimeout(bubbleTimer); bubbleTimer=setTimeout(()=>b.classList.remove("show"),3200); }
+}
+function fx(txt, cls, nearPlayer){
+  const el = document.createElement("div");
+  el.className = "fx "+cls; el.textContent = txt;
+  const box = nearPlayer ? playerBox : buddyBox;
+  const r = box.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+  el.style.left = (r.left-sr.left + r.width*(0.2+Math.random()*0.6))+"px";
+  el.style.top  = (r.top-sr.top + 20 + Math.random()*40)+"px";
+  stage.appendChild(el); setTimeout(()=>el.remove(),1500);
+}
+function feathers(){
+  for(let i=0;i<7;i++){
+    const f=document.createElement("div"); f.className="feather";
+    const sr=stage.getBoundingClientRect();
+    f.style.left=(sr.width*0.35+Math.random()*sr.width*0.3)+"px";
+    f.style.top=(sr.height*0.3+Math.random()*sr.height*0.2)+"px";
+    f.style.animationDelay=(Math.random()*0.4)+"s";
+    stage.appendChild(f); setTimeout(()=>f.remove(),2200);
+  }
+}
+function earn(n){
+  G.bubbles += n; G.xp += n;
+  $("bubNum").textContent = G.bubbles;
+  const el = document.createElement("div");
+  el.className="plusBub"; el.textContent = "+"+n+" 🫧";
+  const sr = stage.getBoundingClientRect();
+  el.style.left = (sr.width*0.42)+"px"; el.style.top = (sr.height*0.3)+"px";
+  stage.appendChild(el); setTimeout(()=>el.remove(),1300);
+  snd.blip(); checkLevel();
+}
+function xpNeed(){ return 40 + (G.level-1)*30; }
+function checkLevel(){
+  while(G.xp >= xpNeed()){
+    G.xp -= xpNeed(); G.level++;
+    $("lvNum").textContent = G.level;
+    snd.fanfare();
+    overlay("💗 Friendship Level "+G.level+"!");
+    say("Yay! We are level "+G.level+" friends, "+playerCfg.name+"!", {after:"love"});
+    for(let i=0;i<6;i++) setTimeout(()=>fx("🫧","fxNote"), i*150);
+  }
+  $("friendBar").querySelector("i").style.width = (G.xp/xpNeed()*100)+"%";
+}
+function overlay(msg){
+  $("overlayCard").textContent = msg;
+  $("overlayMsg").classList.add("on");
+  setTimeout(()=>$("overlayMsg").classList.remove("on"), 1800);
+}
+function updateStats(){
+  S.food=clamp(S.food); S.happy=clamp(S.happy); S.energy=clamp(S.energy);
+  for(const [k,v] of [["Food",S.food],["Happy",S.happy],["Energy",S.energy]]){
+    $("v"+k).textContent = Math.round(v);
+    const bar=$("b"+k); bar.style.width=v+"%";
+    bar.style.background = v>55?"var(--good)":v>25?"var(--warn)":"var(--bad)";
+  }
+}
+
+/* ---------------- mood / idle ---------------- */
+function moodExpr(){
+  const m = Math.min(S.food,S.happy,S.energy);
+  if(m<25) return "cry";
+  if(S.energy<35) return "sleepy";
+  if(m<55) return "open";
+  return "calm";
+}
+function backToIdle(){
+  busy = false;
+  stage.classList.remove("running");
+  for(const box of [buddyBox, playerBox]){
+    box.classList.remove("dance","giggle","jumpy","run","armsUp","pillowUp","leanL","leanR","chomp","blowing","sadShake");
+    box.classList.add("idleB");
+  }
+  playerBox.dataset.expr = "calm";
+  const e = moodExpr();
+  buddyBox.dataset.expr = e;
+  buddyBox.classList.toggle("sadShake", e==="cry");
+}
+function setBusy(){ busy=true;
+  for(const box of [buddyBox,playerBox]) box.classList.remove("idleB"); }
+function doAction(fn, lockMs){
+  if(busy) return false;
+  if(sleeping){ wakeUp(); return false; }
+  setBusy(); fn(); setTimeout(backToIdle, lockMs); return true;
+}
+
+/* ---------------- local chat brain (offline fallback) ---------------- */
+const JOKES = [
+  "Why did the cookie go to the doctor? It was feeling crummy! Haha!",
+  "What do you call a sleeping dinosaur? A dino-snore!",
+  "Why did the banana go to school? To become a smoothie!",
+];
+function localReply(t){
+  t = t.toLowerCase();
+  const P = playerCfg.name, B = buddyCfg.name;
+  if(/\b(hi|hello|hey|namaste)\b/.test(t)) return rand(["Hi hi "+P+"! Wanna play?","Hello "+P+"! I missed you!","Heyyy! Best friend!"]);
+  if(/your name|who are you/.test(t)) return "I'm "+B+"! Your bestest friend!";
+  if(/how are you|how do you feel/.test(t)){
+    if(S.food<35) return "My tummy is rumbling... feed me?";
+    if(S.energy<35) return "A little sleepy... yawn!";
+    return rand(["I'm super duper happy!","Great! Because you're here!"]);
+  }
+  if(/love|like you/.test(t)) return "Awww! I love you too, "+P+"!";
+  if(/joke|funny/.test(t)) return rand(JOKES);
+  if(/food|eat|hungry|cookie|pizza/.test(t)) return "Yes yes! Cookies please! Press the Feed button!";
+  if(/sing|song|music/.test(t)) return "La la la laaa~ tra la laaa!";
+  if(/sad|cry/.test(t)) return "Don't be sad! I'll give you a biiiig hug!";
+  if(/school|study/.test(t)) return "Eww homework! Let's play instead, hehe.";
+  if(/age|old/.test(t)) return "I'm eight! Well... eight crayons old!";
+  if(/bye|good night/.test(t)) return "Noooo don't go! Okay okay... come back soon!";
+  if(/\?$/.test(t)) return rand(["Hmm, I think... yes!","Maybe! What do YOU think?","Hehe, I don't know, tell me!"]);
+  return rand(["Hehe really? Tell me more!","Wow! And then what happened?","That's so cool, "+P+"!","Hmm hmm! What else?","Hehe you're funny!"]);
+}
+
+/* ---------------- AI chat (works inside Claude preview, falls back offline) ---------------- */
+async function aiReply(text){
+  const sys = "You are "+buddyCfg.name+", a sweet, cheerful little cartoon girl in a kids' game called BubbleMe. "
+    +"You are best friends with "+playerCfg.name+". Reply in ONE or TWO very short, simple, playful sentences a child would love. "
+    +"Be kind, curious and funny. Sometimes ask a fun question back. Never use emojis or asterisks. Always family-friendly. "
+    +"Your current feelings: food "+Math.round(S.food)+"/100, happiness "+Math.round(S.happy)+"/100, energy "+Math.round(S.energy)+"/100.";
+  const msgs = chatHistory.slice(-8).concat([{role:"user",content:text}]);
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), 9000);
+  const resp = await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST", headers:{"Content-Type":"application/json"}, signal:ctrl.signal,
+    body:JSON.stringify({model:"claude-sonnet-4-20250514", max_tokens:1000, system:sys, messages:msgs})
+  });
+  clearTimeout(timer);
+  const data = await resp.json();
+  const out = (data.content||[]).filter(c=>c.type==="text").map(c=>c.text).join(" ").trim();
+  if(!out) throw new Error("empty");
+  return out.slice(0, 220);
+}
+async function buddyRespond(text){
+  showBubble(text, true);
+  playerBox.dataset.expr = "happy";
+  buddyBox.dataset.expr = "open";
+  showBubble("...", false);
+  let reply;
+  try{ reply = await aiReply(text); }
+  catch(e){ reply = localReply(text); }
+  chatHistory.push({role:"user",content:text},{role:"assistant",content:reply});
+  if(chatHistory.length>16) chatHistory.splice(0, chatHistory.length-16);
+  buddyBox.classList.add("giggle"); setTimeout(()=>buddyBox.classList.remove("giggle"),1100);
+  say(reply, {after:"happy"});
+  S.happy += 5; updateStats(); earn(4);
+  // playful voice commands
+  const t = text.toLowerCase();
+  setTimeout(()=>{
+    if(/\bdance\b/.test(t)) $("aDance").click();
+    else if(/\brun\b/.test(t)) $("aRun").click();
+    else if(/\bsleep\b/.test(t)) $("aSleep").click();
+    else if(/\bhug\b/.test(t)) $("aHug").click();
+    else if(/\bfight\b/.test(t)) $("aFight").click();
+  }, 2200);
+}
+
+/* ---------------- talk bar ---------------- */
+$("aTalk").onclick = ()=>{
+  talkOpen = !talkOpen;
+  $("talkBar").classList.toggle("on", talkOpen);
+  if(talkOpen){ say("Talk to me, "+playerCfg.name+"!", {after:"happy"}); $("talkInput").focus(); }
+};
+$("btnCloseTalk").onclick = ()=>{ talkOpen=false; $("talkBar").classList.remove("on"); };
+$("btnSend").onclick = sendTyped;
+$("talkInput").addEventListener("keydown", e=>{ if(e.key==="Enter") sendTyped(); });
+function sendTyped(){
+  const t = $("talkInput").value.trim();
+  if(!t) return;
+  $("talkInput").value = "";
+  buddyRespond(t);
+}
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+$("btnMic").onclick = ()=>{
+  if(!SR){ showBubble("Mic not available here — type instead!", false); return; }
+  const rec = new SR();
+  rec.lang = "en-IN"; rec.interimResults = false;
+  $("btnMic").classList.add("rec");
+  buddyBox.dataset.expr = "o"; showBubble("I'm listening... 👂", false);
+  let got = false;
+  rec.onresult = ev=>{ got = true; buddyRespond(ev.results[0][0].transcript); };
+  rec.onend = ()=>{ $("btnMic").classList.remove("rec");
+    if(!got) showBubble("I didn't hear you! Try again?", false); };
+  rec.onerror = ()=>{};
+  try{ rec.start(); }catch(e){ $("btnMic").classList.remove("rec"); }
+};
+
+/* ---------------- character taps ---------------- */
+function bindTaps(){
+  buddyBox.querySelector(".zoneHead").addEventListener("pointerdown", ()=>{
+    if(sleeping){ wakeUp(); return; } if(busy) return;
+    setBusy(); buddyBox.dataset.expr="o"; snd.pop();
+    setTimeout(()=>{ buddyBox.dataset.expr="laugh"; buddyBox.classList.add("giggle"); snd.giggle();
+      say(rand(["Hehe that tickles!","Hi hi "+playerCfg.name+"!","Boop! You booped me!"]), {after:"happy"}); },320);
+    S.happy+=3; updateStats(); earn(2);
+    setTimeout(backToIdle, 1500);
+  });
+  buddyBox.querySelector(".zoneBelly").addEventListener("pointerdown", ()=>{
+    if(sleeping){ wakeUp(); return; } if(busy) return;
+    setBusy(); buddyBox.dataset.expr="laugh"; buddyBox.classList.add("giggle"); snd.giggle();
+    say(rand(["Hahaha stop it!","That tickles soooo much!","Hee hee hee!"]), {after:"happy"});
+    fx("✨","fxNote"); S.happy+=5; updateStats(); earn(2);
+    setTimeout(backToIdle, 1400);
+  });
+  playerBox.addEventListener("pointerdown", ()=>{
+    if(busy||sleeping) return;
+    playerBox.dataset.expr="laugh"; playerBox.classList.add("giggle");
+    showBubble("Hehe!", true); snd.giggle();
+    setTimeout(()=>{ playerBox.classList.remove("giggle"); playerBox.dataset.expr="calm"; },1100);
+  });
+}
+
+/* ---------------- actions ---------------- */
+const FOODS=["🍎","🍪","🍌","🍓","🧁","🍕"];
+$("aFeed").onclick = ()=> doAction(()=>{
+  const f=$("flyFood"); f.textContent=rand(FOODS); f.style.display="block";
+  const sr=stage.getBoundingClientRect(), r=buddyBox.getBoundingClientRect();
+  const mx=r.left-sr.left+r.width*0.5-18, my=r.top-sr.top+r.height*0.40;
+  f.style.left=mx+"px"; f.style.top=(sr.height-16)+"px"; f.style.transition="none";
+  requestAnimationFrame(()=>{ f.style.transition="top .5s ease-in, transform .5s";
+    f.style.top=my+"px"; f.style.transform="scale(.7) rotate(20deg)"; });
+  buddyBox.dataset.expr="eat";
+  setTimeout(()=>{
+    f.style.display="none"; f.style.transform="";
+    let c=0; const iv=setInterval(()=>{
+      buddyBox.classList.toggle("chomp"); snd.chomp();
+      if(++c>=6){ clearInterval(iv); buddyBox.dataset.expr="happy";
+        say(rand(["Yummy yummy!","So tasty!","More please!"]), {after:"happy"}); fx("💛","fxHeart"); }
+    },180);
+  },550);
+  S.food+=18; S.happy+=3; updateStats(); earn(5);
+},2800);
+
+$("aDance").onclick = ()=> doAction(()=>{
+  for(const b of [buddyBox,playerBox]){ b.dataset.expr="happy"; b.classList.add("dance","armsUp"); }
+  snd.notes(); setTimeout(snd.notes,700); setTimeout(snd.notes,1400);
+  say(rand(["Dance party!","Wooo let's dance!","Shake shake shake!"]), {after:"happy"});
+  showBubble("🎵🎵", true);
+  const iv=setInterval(()=>{ fx("🎵","fxNote"); fx("🎵","fxNote",true); },350);
+  setTimeout(()=>clearInterval(iv),2400);
+  S.happy+=10; S.energy-=7; updateStats(); earn(8);
+},2800);
+
+$("aRun").onclick = ()=> doAction(()=>{
+  stage.classList.add("running");
+  for(const b of [buddyBox,playerBox]){ b.dataset.expr="happy"; b.classList.add("run"); }
+  say(rand(["Run run run!","Catch me if you can!","Wheee so fast!"]), {after:"happy"});
+  const iv=setInterval(()=>{ snd.steps(); if(Math.random()<0.3) fx("💨","fxNote",Math.random()<0.5); },180);
+  setTimeout(()=>clearInterval(iv),3400);
+  S.happy+=8; S.energy-=10; S.food-=4; updateStats(); earn(8);
+},3600);
+
+$("aFight").onclick = ()=> doAction(()=>{
+  // friendly pillow fight!
+  buddyBox.dataset.expr="grr"; playerBox.dataset.expr="grr";
+  buddyBox.classList.add("pillowUp","leanL");
+  playerBox.classList.add("pillowUp","leanR");
+  say("Pillow fiiiight!", {after:"laugh"});
+  let hits=0;
+  const iv=setInterval(()=>{
+    snd.bonk(); feathers(); hits++;
+    fx("💥","fxNote", hits%2===0);
+    if(hits>=5){ clearInterval(iv);
+      buddyBox.classList.remove("leanL","pillowUp");
+      playerBox.classList.remove("leanR","pillowUp");
+      buddyBox.dataset.expr="laugh"; playerBox.dataset.expr="laugh";
+      buddyBox.classList.add("giggle"); playerBox.classList.add("giggle");
+      snd.giggle(); say("Hahaha! You win, "+playerCfg.name+"!", {after:"happy"});
+      showBubble("Hahaha!", true);
+    }
+  },600);
+  S.happy+=14; S.energy-=8; updateStats(); earn(12);
+},4600);
+
+$("aFan").onclick = ()=>{
+  if(sleeping){ wakeUp(); return; }
+  if(busy && !fanOn) return;
+  fanOn = !fanOn;
+  $("fan").classList.toggle("in", fanOn);
+  if(fanOn){
+    setBusy();
+    buddyBox.dataset.expr="hot"; buddyBox.classList.add("blowing");
+    playerBox.dataset.expr="hot"; playerBox.classList.add("blowing");
+    snd.whoosh();
+    say(rand(["Aaaahh so cool!","Niiice breeze~","Phew, much better!"]), {after:"hot"});
+    S.happy+=5; updateStats(); earn(3);
+  }else backToIdle();
+};
+
+function wakeUp(){
+  sleeping=false; busy=false;
+  $("nightOverlay").classList.remove("on");
+  buddyBox.dataset.expr="o"; snd.pop();
+  say("Good morning! I feel super!", {after:"happy"});
+  setTimeout(backToIdle,1300); updateStats();
+}
+$("aSleep").onclick = ()=>{
+  if(sleeping){ wakeUp(); return; }
+  if(busy) return;
+  if(fanOn){ fanOn=false; $("fan").classList.remove("in"); }
+  setBusy(); sleeping=true;
+  buddyBox.dataset.expr="sleepy"; playerBox.dataset.expr="sleepy";
+  say("Good night...", {pitch:1.5, rate:0.9, after:"sleepy"});
+  $("nightOverlay").classList.add("on");
+  const zi=setInterval(()=>{
+    if(!sleeping){ clearInterval(zi); return; }
+    fx("Z","fxZ"); snd.snore();
+    S.energy+=7; S.food-=1; updateStats();
+    if(S.energy>=100) wakeUp();
+  },1200);
+};
+
+$("aHug").onclick = ()=> doAction(()=>{
+  playerBox.style.left = "22%";
+  buddyBox.style.left = "40%";
+  setTimeout(()=>{
+    buddyBox.dataset.expr="love"; playerBox.dataset.expr="love"; snd.love();
+    say(rand(["Best friends forever!","I love hugs!","You're my favourite, "+playerCfg.name+"!"]), {after:"love"});
+    for(let i=0;i<5;i++) setTimeout(()=>fx("❤️", "fxHeart", i%2===0), i*220);
+  },550);
+  setTimeout(()=>{ playerBox.style.left="6%"; buddyBox.style.left="52%"; },2700);
+  S.happy+=15; updateStats(); earn(10);
+},3400);
+
+/* ---------------- mini game: cookie catch ---------------- */
+let mgOn=false;
+$("aCatch").onclick = ()=>{
+  if(busy||sleeping) return;
+  mgOn=true; $("miniGame").classList.add("on");
+  $("mgMsg").innerHTML = '<div class="hudCard" style="font-size:18px;padding:10px 18px">Drag '+buddyCfg.name+' to catch cookies!</div><button class="bigBtn" id="mgStart">Start!</button>';
+  $("mgStart").onclick = startCatch;
+};
+function startCatch(){
+  $("mgMsg").innerHTML = "";
+  const mg=$("miniGame"), catcher=$("mgCatcher");
+  catcher.innerHTML = charSVG(buddyCfg);
+  catcher.firstElementChild?.setAttribute("data-expr","happy");
+  // expressions are controlled by parent [data-expr]; wrap it
+  catcher.dataset.expr="happy"; catcher.dataset.hair=buddyCfg.hairStyle;
+  catcher.className=""; catcher.classList.add("charBox");
+  catcher.removeAttribute("style");
+  catcher.style.position="absolute"; catcher.style.bottom="4%"; catcher.style.width="110px";
+  let px = mg.clientWidth/2-55;
+  catcher.style.left = px+"px";
+  const move = e=>{
+    const x = (e.touches? e.touches[0].clientX : e.clientX);
+    px = Math.max(0, Math.min(mg.clientWidth-110, x-55));
+    catcher.style.left = px+"px";
+  };
+  mg.addEventListener("pointermove", move);
+  mg.addEventListener("touchmove", move, {passive:true});
+  let score=0, time=20, cookies=[], over=false;
+  $("mgScore").textContent="0"; $("mgTime").textContent="20";
+  const ti=setInterval(()=>{ $("mgTime").textContent=--time;
+    if(time<=0){ end(); } },1000);
+  const spawner=setInterval(()=>{
+    const c=document.createElement("div"); c.className="cookie";
+    c.textContent=rand(["🍪","🍎","🧁","🍓"]);
+    c.x = 20+Math.random()*(mg.clientWidth-60); c.y=-40;
+    c.v = 2.2+Math.random()*2.2 + (20-time)*0.06;
+    c.style.left=c.x+"px"; c.style.top=c.y+"px";
+    mg.appendChild(c); cookies.push(c);
+  },650);
+  function loop(){
+    if(over) return;
+    const catchY = mg.clientHeight*0.96 - 150;
+    for(const c of cookies){
+      if(c.dead) continue;
+      c.y += c.v; c.style.top=c.y+"px";
+      if(c.y>catchY && c.y<catchY+120 && Math.abs((c.x+17)-(px+55))<60){
+        c.dead=true; c.remove(); score++; $("mgScore").textContent=score; snd.chomp();
+      } else if(c.y>mg.clientHeight){ c.dead=true; c.remove(); }
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+  function end(){
+    over=true; clearInterval(ti); clearInterval(spawner);
+    cookies.forEach(c=>c.remove());
+    mg.removeEventListener("pointermove",move); mg.removeEventListener("touchmove",move);
+    const won = score*2;
+    $("mgMsg").innerHTML = '<div class="hudCard" style="font-size:20px;padding:12px 20px">🍪 '+score+' cookies!<br>+'+won+' 🫧</div><button class="bigBtn" id="mgDone">Done</button>';
+    snd.fanfare();
+    $("mgDone").onclick = ()=>{
+      $("miniGame").classList.remove("on"); mgOn=false;
+      earn(won); S.food+=Math.min(20,score); S.happy+=8; updateStats();
+      say(score>10 ? "Wow you're amazing at this!" : "Yum! That was fun!", {after:"happy"});
+    };
+  }
+}
+
+/* ---------------- life loop & chatter ---------------- */
+setInterval(()=>{
+  if(!sleeping && !mgOn){
+    S.food-=1.0; S.energy-=0.55; S.happy-=0.6;
+    updateStats();
+    if(!busy){
+      const e=moodExpr(); buddyBox.dataset.expr=e;
+      buddyBox.classList.toggle("sadShake", e==="cry");
+    }
+  }
+},4000);
+setInterval(()=>{
+  if(busy||sleeping||mgOn||talkOpen||Math.random()<0.45) return;
+  const m=Math.min(S.food,S.happy,S.energy);
+  let pool=["Hehe!","Play with me!","What shall we do, "+playerCfg.name+"?","La la la~","Press Talk and chat with me!"];
+  if(m<25){ pool=["I feel sad...","Waaah!","I need a hug..."]; snd.sad(); }
+  else if(S.food<40) pool=["I'm hungryyy!","My tummy is empty!","Cookies please!"];
+  else if(S.energy<35) pool=["I'm so sleepy...","Yawn... nap time?"];
+  say(rand(pool));
+},12000);
+
+/* ---------------- creator screen logic ---------------- */
+function buildSwatches(){
+  for(const c of HAIR_COLORS){
+    const b=document.createElement("button");
+    b.className="swatch"+(c===playerCfg.hair?" sel":""); b.style.background=c;
+    b.onclick=()=>{ playerCfg.hair=c; refreshPreview();
+      [...$("hairColors").children].forEach(x=>x.classList.toggle("sel",x===b)); };
+    $("hairColors").appendChild(b);
+  }
+  for(const c of TEE_COLORS){
+    const b=document.createElement("button");
+    b.className="swatch"+(c===playerCfg.tee?" sel":""); b.style.background=c;
+    b.onclick=()=>{ playerCfg.tee=c; refreshPreview();
+      [...$("teeColors").children].forEach(x=>x.classList.toggle("sel",x===b)); };
+    $("teeColors").appendChild(b);
+  }
+  [...$("hairChips").children].forEach(ch=>{
+    ch.onclick=()=>{ playerCfg.hairStyle=ch.dataset.v; refreshPreview();
+      [...$("hairChips").children].forEach(x=>x.classList.toggle("sel",x===ch)); };
+  });
+}
+function refreshPreview(){
+  const pb=$("previewBox");
+  pb.className="charBox"; pb.style.position="relative"; pb.style.width="170px";
+  pb.dataset.expr="happy"; pb.dataset.hair=playerCfg.hairStyle;
+  pb.innerHTML = charSVG(playerCfg);
+}
+
+/* ---------------- screens ---------------- */
+function makeTitleBubbles(){
+  for(let i=0;i<8;i++){
+    const b=document.createElement("div"); b.className="bgBubble";
+    const s=18+Math.random()*44;
+    b.style.width=s+"px"; b.style.height=s+"px";
+    b.style.left=(Math.random()*92)+"%";
+    b.style.animationDuration=(7+Math.random()*8)+"s";
+    b.style.animationDelay=(-Math.random()*10)+"s";
+    $("scrTitle").appendChild(b);
+  }
+  const tc=$("titleChar");
+  tc.className="charBox idleB"; tc.style.position="relative";
+  tc.dataset.expr="happy"; tc.dataset.hair="bob";
+  tc.innerHTML = charSVG(buddyCfg);
+}
+$("btnStart").onclick = ()=>{
+  audio(); snd.pop();
+  $("scrTitle").classList.remove("on");
+  $("scrCreate").classList.add("on");
+  refreshPreview();
+};
+$("btnGo").onclick = ()=>{
+  snd.fanfare();
+  playerCfg.name = ($("inpPlayerName").value.trim()||"Me").slice(0,12);
+  buddyCfg.name = ($("inpBuddyName").value.trim()||"Mia").slice(0,12);
+  $("scrCreate").classList.remove("on");
+  $("scrGame").classList.add("on");
+  buddyBox.innerHTML = charSVG(buddyCfg);
+  buddyBox.dataset.hair = buddyCfg.hairStyle;
+  playerBox.innerHTML = charSVG(playerCfg);
+  playerBox.dataset.hair = playerCfg.hairStyle;
+  bindTaps(); updateStats(); checkLevel();
+  setTimeout(()=>say("Hi "+playerCfg.name+"! I'm "+buddyCfg.name+"! Let's play!", {after:"happy"}), 600);
+};
+
+makeTitleBubbles();
+buildSwatches();
+document.body.addEventListener("pointerdown", ()=>audio());
+</script>
+</body>
+</html>
